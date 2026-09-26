@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EasyPlan - Plano de Corte 2D</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    :root {
+      --bg-primary: #f4f6f8;
+      --bg-card: #ffffff;
+      --text-dark: #1e293b;
+      --text-muted: #64748b;
+      --border-color: #cbd5e1;
+      --accent-blue: #0284c7;
+      --accent-blue-hover: #0369a1;
+      --part-blue-base: #e0f2fe;
+      --part-blue-border: #0284c7;
+      --offcut-bg: #ffffff;
+      --offcut-border: #64748b;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-dark);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    header {
+      background-color: #0f172a;
+      color: #ffffff;
+      padding: 1rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: var(--shadow-md);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      background-color: var(--accent-blue);
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      font-weight: bold;
+      color: white;
+    }
+
+    .brand h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    .btn-lang {
+      background: transparent;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+
+    .btn-lang:hover {
+      background-color: #1e293b;
+      color: white;
+    }
+
+    /* Main Layout */
+    .container {
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 1.5rem;
+      padding: 1.5rem;
+      max-width: 1800px;
+      margin: 0 auto;
+      width: 100%;
+      flex: 1;
+    }
+
+    @media (max-width: 1024px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--bg-card);
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      border-bottom: 2px solid #f1f5f9;
+      padding-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Forms & Inputs */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    .form-row-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0.5rem;
+    }
+
+    label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--accent-blue);
+    }
+
+    .btn {
+      padding: 0.6rem 1rem;
+      border-radius: 6px;
+      border: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background-color: #10b981;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: #059669;
+    }
+
+    .btn-secondary {
+      background-color: var(--accent-blue);
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background-color: var(--accent-blue-hover);
+    }
+
+    .btn-outline {
+      background-color: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-dark);
+    }
+
+    .btn-outline:hover {
+      background-color: #f8fafc;
+    }
+
+    .btn-sm {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.8rem;
+    }
+
+    .btn-rotate {
+      background-color: #e0f2fe;
+      color: #0369a1;
+      border: 1px solid #bae6fd;
+    }
+
+    .btn-rotate:hover {
+      background-color: #bae6fd;
+    }
+
+    .btn-rotate.active {
+      background-color: #0284c7;
+      color: white;
+      border-color: #0284c7;
+    }
+
+    /* Parts Table */
+    .table-container {
+      overflow-x: auto;
+      max-height: 380px;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f8fafc;
+      padding: 0.6rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    td {
+      padding: 0.5rem 0.6rem;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
+    }
+
+    .qty-control {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .qty-btn {
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+      background: #f8fafc;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      font-weight: bold;
+    }
+
+    .qty-btn:hover {
+      background: #e2e8f0;
+    }
+
+    .qty-input {
+      width: 36px;
+      text-align: center;
+      padding: 0.15rem;
+      font-size: 0.85rem;
+    }
+
+    /* Pegboard Viewport */
+    .viewport-container {
+      background-color: #f1f5f9;
+      /* Subtle White Pegboard Pattern */
+      background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
+      background-size: 18px 18px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      min-height: 600px;
+      overflow: auto;
+    }
+
+    .diagram-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(4px);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    .sheet-canvas-wrapper {
+      background: white;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: var(--shadow-md);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+      margin: 0 auto;
+    }
+
+    .sheet-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    canvas {
+      border: 2px solid #334155;
+      background-color: #ffffff;
+      display: block;
+    }
+
+    /* Metrics Summary Cards */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .metric-card {
+      background: #f8fafc;
+      padding: 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      text-align: center;
+    }
+
+    .metric-val {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent-blue);
+    }
+
+    .metric-lbl {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+    }
+
+    .alert-banner {
+      background-color: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fcd34d;
+      padding: 0.6rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-icon">EP</div>
+      <h1 id="app-title">EasyPlan - Plano de Corte 2D</h1>
+    </div>
+    <div class="header-actions">
+      <button class="btn-lang" id="btn-lang" onclick="toggleLanguage()">EN / PT</button>
+      <button class="btn btn-primary" onclick="exportPDF()">
+        <span>📄</span> <span id="lbl-pdf">Baixar PDF</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- Left Column: Controls & Part List -->
+    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+      
+      <!-- Sheet Config -->
+      <div class="card">
+        <div class="card-title">
+          <span id="lbl-sheet-config">Configuração da Chapa</span>
+        </div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label id="lbl-length">Compr. (mm)</label>
+            <input type="number" id="sheet-length" value="2750">
+          </div>
+          <div class="form-group">
+            <label id="lbl-width">Largura (mm)</label>
+            <input type="number" id="sheet-width" value="1830">
+          </div>
+          <div class="form-group">
+            <label id="lbl-kerf">Esp. Serra (mm)</label>
+            <input type="number" id="sheet-kerf" value="3">
+          </div>
+        </div>
+      </div>
+
+      <!-- Add Part Form -->
+      <div class="card">
+        <div class="card-title">
+          <span id="lbl-add-part">Adicionar Peça</span>
+        </div>
+        <div class="form-group">
+          <label id="lbl-part-name">Nome da Peça (Opcional)</label>
+          <input type="text" id="part-name" placeholder="Ex: Lateral Esquerda">
+        </div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label id="lbl-part-len">Compr. (mm)</label>
+            <input type="number" id="part-length" placeholder="1000">
+          </div>
+          <div class="form-group">
+            <label id="lbl-part-wid">Largura (mm)</label>
+            <input type="number" id="part-width" placeholder="500">
+          </div>
+          <div class="form-group">
+            <label id="lbl-part-qty">Qtd.</label>
+            <input type="number" id="part-qty" value="1" min="1">
+          </div>
+        </div>
+        <button class="btn btn-secondary" onclick="addPart()" id="lbl-btn-add">
+          <span>+</span> Adicionar à Lista
+        </button>
+      </div>
+
+      <!-- Parts List Table -->
+      <div class="card" style="flex: 1;">
+        <div class="card-title">
+          <span id="lbl-parts-list">Lista de Peças</span>
+          <button class="btn btn-outline btn-sm" onclick="clearParts()" id="lbl-clear">Limpar Tudo</button>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th id="th-name">Nome</th>
+                <th id="th-dim">Dimensões (mm)</th>
+                <th id="th-qty">Qtd</th>
+                <th id="th-orient">Orientação</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="parts-tbl-body">
+              <!-- Dynamic Rows -->
+            </tbody>
+          </table>
+        </div>
+
+        <div id="pending-alert" class="alert-banner" style="display: none;">
+          ⚠️ <span id="lbl-pending-msg">Existem alterações pendentes. Clique em "GERAR PLANO" para atualizar.</span>
+        </div>
+
+        <button class="btn btn-primary" onclick="generateLayout()" style="padding: 0.8rem; font-size: 1rem;">
+          🚀 <span id="lbl-btn-generate">GERAR PLANO DE CORTE</span>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Interactive Diagram Canvas -->
+    <div class="viewport-container">
+      
+      <div class="diagram-header">
+        <span style="font-weight: 700; font-size: 1.1rem;" id="lbl-diagram-title">Diagrama do Plano de Corte</span>
+        <span id="sheet-counter" style="font-size: 0.9rem; color: var(--text-muted);">0 Chapas Utilizadas</span>
+      </div>
+
+      <!-- Metrics Panel -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-val" id="val-sheets">0</div>
+          <div class="metric-lbl" id="lbl-m-sheets">Chapas Necessárias</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val" id="val-yield">0%</div>
+          <div class="metric-lbl" id="lbl-m-yield">Aproveitamento</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val" id="val-cuts">0</div>
+          <div class="metric-lbl" id="lbl-m-cuts">Qtd. de Cortes (Passadas)</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val" id="val-cut-len">0.0 m</div>
+          <div class="metric-lbl" id="lbl-m-len">Metragem de Serra</div>
+        </div>
+      </div>
+
+      <!-- Canvas Container -->
+      <div id="diagram-render-area" style="display: flex; flex-direction: column; gap: 2rem; align-items: center;">
+        <div style="color: var(--text-muted); margin-top: 3rem;" id="lbl-empty-state">
+          Adicione peças e clique em "GERAR PLANO DE CORTE" para visualizar o diagrama.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // State
+    let currentLang = 'pt';
+    let parts = [
+      { id: 1, name: 'Lateral', length: 1200, width: 500, qty: 2, rotated: false },
+      { id: 2, name: 'Prateleira', length: 800, width: 450, qty: 3, rotated: true },
+      { id: 3, name: 'Porta', length: 1100, width: 400, qty: 2, rotated: false }
+    ];
+    let calculatedSheets = [];
+
+    // Color Palette Generator for Blue Parts
+    const BLUE_PALETTE = [
+      '#e0f2fe', '#bae6fd', '#7dd3fc', '#38bdf8', '#e0f7fa', '#b2ebf2', '#80deea', '#e1f5fe'
+    ];
+
+    // Language Dictionary
+    const dict = {
+      pt: {
+        title: "EasyPlan - Plano de Corte 2D",
+        pdf: "Baixar PDF",
+        sheetConfig: "Configuração da Chapa",
+        len: "Compr. (mm)",
+        wid: "Largura (mm)",
+        kerf: "Esp. Serra (mm)",
+        addPart: "Adicionar Peça",
+        partName: "Nome da Peça (Opcional)",
+        partQty: "Qtd.",
+        btnAdd: "Adicionar à Lista",
+        partsList: "Lista de Peças",
+        clear: "Limpar Tudo",
+        thName: "Nome",
+        thDim: "Dimensões (mm)",
+        thQty: "Qtd",
+        thOrient: "Orientação",
+        pendingMsg: "Existem alterações pendentes. Clique em 'GERAR PLANO' para atualizar.",
+        btnGenerate: "GERAR PLANO DE CORTE",
+        diagramTitle: "Diagrama do Plano de Corte",
+        sheetsCount: "Chapa(s) Utilizada(s)",
+        mSheets: "Chapas Necessárias",
+        mYield: "Aproveitamento",
+        mCuts: "Qtd. de Cortes (Passadas)",
+        mLen: "Metragem de Serra",
+        emptyState: "Adicione peças e clique em 'GERAR PLANO DE CORTE' para visualizar o diagrama.",
+        rotateBtn: "↻ Girar 90°",
+        vertical: "Vertical",
+        horizontal: "Horizontal",
+        defaultPartName: "Peça",
+        remnant: "Sobra",
+        sheetLabel: "Chapa"
+      },
+      en: {
+        title: "EasyPlan - 2D Cut Optimizer",
+        pdf: "Export PDF",
+        sheetConfig: "Sheet Settings",
+        len: "Length (mm)",
+        wid: "Width (mm)",
+        kerf: "Saw Kerf (mm)",
+        addPart: "Add Part",
+        partName: "Part Name (Optional)",
+        partQty: "Qty",
+        btnAdd: "Add to List",
+        partsList: "Part List",
+        clear: "Clear All",
+        thName: "Name",
+        thDim: "Dimensions (mm)",
+        thQty: "Qty",
+        thOrient: "Orientation",
+        pendingMsg: "Pending changes. Click 'GENERATE PLAN' to update diagram.",
+        btnGenerate: "GENERATE CUTTING PLAN",
+        diagramTitle: "Cutting Layout Diagram",
+        sheetsCount: "Sheet(s) Used",
+        mSheets: "Required Sheets",
+        mYield: "Sheet Yield",
+        mCuts: "Total Saw Cuts",
+        mLen: "Cut Length",
+        emptyState: "Add parts and click 'GENERATE CUTTING PLAN' to render layout.",
+        rotateBtn: "↻ Rotate 90°",
+        vertical: "Vertical",
+        horizontal: "Horizontal",
+        defaultPartName: "Part",
+        remnant: "Offcut",
+        sheetLabel: "Sheet"
+      }
+    };
+
+    function toggleLanguage() {
+      currentLang = currentLang === 'pt' ? 'en' : 'pt';
+      const t = dict[currentLang];
+      
+      document.getElementById('app-title').innerText = t.title;
+      document.getElementById('lbl-pdf').innerText = t.pdf;
+      document.getElementById('lbl-sheet-config').innerText = t.sheetConfig;
+      document.getElementById('lbl-length').innerText = t.len;
+      document.getElementById('lbl-width').innerText = t.wid;
+      document.getElementById('lbl-kerf').innerText = t.kerf;
+      document.getElementById('lbl-add-part').innerText = t.addPart;
+      document.getElementById('lbl-part-name').innerText = t.partName;
+      document.getElementById('lbl-part-len').innerText = t.len;
+      document.getElementById('lbl-part-wid').innerText = t.wid;
+      document.getElementById('lbl-part-qty').innerText = t.partQty;
+      document.getElementById('lbl-btn-add').innerText = t.btnAdd;
+      document.getElementById('lbl-parts-list').innerText = t.partsList;
+      document.getElementById('lbl-clear').innerText = t.clear;
+      document.getElementById('th-name').innerText = t.thName;
+      document.getElementById('th-dim').innerText = t.thDim;
+      document.getElementById('th-qty').innerText = t.thQty;
+      document.getElementById('th-orient').innerText = t.thOrient;
+      document.getElementById('lbl-pending-msg').innerText = t.pendingMsg;
+      document.getElementById('lbl-btn-generate').innerText = t.btnGenerate;
+      document.getElementById('lbl-diagram-title').innerText = t.diagramTitle;
+      document.getElementById('lbl-m-sheets').innerText = t.mSheets;
+      document.getElementById('lbl-m-yield').innerText = t.mYield;
+      document.getElementById('lbl-m-cuts').innerText = t.mCuts;
+      document.getElementById('lbl-m-len').innerText = t.mLen;
+      document.getElementById('lbl-empty-state').innerText = t.emptyState;
+
+      renderPartsTable();
+      if(calculatedSheets.length > 0) renderLayoutCanvas();
+    }
+
+    function markPending() {
+      document.getElementById('pending-alert').style.display = 'flex';
+    }
+
+    function clearPending() {
+      document.getElementById('pending-alert').style.display = 'none';
+    }
+
+    function renderPartsTable() {
+      const tbody = document.getElementById('parts-tbl-body');
+      tbody.innerHTML = '';
+      const t = dict[currentLang];
+
+      parts.forEach((part, index) => {
+        const tr = document.createElement('tr');
+        
+        // Effective dimensions based on user rotation toggle
+        const effLen = part.rotated ? part.width : part.length;
+        const effWid = part.rotated ? part.length : part.width;
+
+        tr.innerHTML = `
+          <td><strong>${part.name || `${t.defaultPartName}${index + 1}`}</strong></td>
+          <td>${effLen} × ${effWid}</td>
+          <td>
+            <div class="qty-control">
+              <button class="qty-btn" onclick="updateQty(${part.id}, -1)">-</button>
+              <input type="number" class="qty-input" value="${part.qty}" min="1" onchange="setQty(${part.id}, this.value)">
+              <button class="qty-btn" onclick="updateQty(${part.id}, 1)">+</button>
+            </div>
+          </td>
+          <td>
+            <button class="btn btn-sm btn-rotate ${part.rotated ? 'active' : ''}" onclick="toggleRotate(${part.id})">
+              ${t.rotateBtn} (${part.rotated ? t.horizontal : t.vertical})
+            </button>
+          </td>
+          <td>
+            <button style="background:none; border:none; color:#ef4444; cursor:pointer; font-weight:bold;" onclick="removePart(${part.id})">✕</button>
+          </td>
+        `;
