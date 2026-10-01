@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full bg-[#F0F9FF]">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EasyPlan - Plano de Corte 2D para Marcenaria</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        bluePalette: {
+                            50: '#F0F9FF',
+                            100: '#E0F2FE',
+                            200: '#BAE6FD',
+                            500: '#0284C7',
+                            600: '#2563EB',
+                            700: '#1D4ED8',
+                            800: '#1E293B',
+                            900: '#0F172A'
+                        },
+                        amberAccent: '#38BDF8',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; color: #0F172A; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #E0F2FE; }
+        ::-webkit-scrollbar-thumb { background: #2563EB; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #1D4ED8; }
+        .pegboard-bg {
+            background-color: #F8FAFC;
+            background-image: radial-gradient(#94A3B8 13%, transparent 13%);
+            background-size: 20px 20px;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+        canvas { touch-action: pan-x pan-y; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-[#F0F9FF] text-[#0F172A]">
+
+    <header class="bg-[#0F172A] text-[#F0F9FF] shadow-md sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#38BDF8] to-[#2563EB] flex items-center justify-center text-white font-black text-xl shadow-lg">
+                    <i class="fa-solid fa-ruler-combined"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold tracking-tight flex items-center gap-2">
+                        EasyPlan
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#38BDF8] text-[#0F172A] uppercase tracking-wider">2D PRO</span>
+                    </h1>
+                    <p class="text-xs text-[#BAE6FD] hidden sm:block" id="txt-subhead">Otimizador e Diagrama de Corte para Marcenaria</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <a href="https://tiago547-ciber.github.io/3d/" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-bold px-3 py-2 rounded-lg border border-sky-400/30 transition-all shadow-md">
+                    <i class="fa-solid fa-cube text-sm text-[#38BDF8]"></i>
+                    <span>Módulos 3D</span>
+                </a>
+
+                <div class="flex bg-[#1E293B] p-1 rounded-lg border border-[#334155]">
+                    <button id="btn-lang-pt" onclick="setLanguage('pt')" class="px-2.5 py-1 text-xs font-bold rounded bg-[#2563EB] text-white transition-all">PT</button>
+                    <button id="btn-lang-en" onclick="setLanguage('en')" class="px-2.5 py-1 text-xs font-bold rounded text-[#BAE6FD] hover:text-white transition-all">EN</button>
+                </div>
+
+                <button onclick="openAuthModal()" id="btn-auth" class="flex items-center gap-2 bg-[#1E293B] hover:bg-[#334155] text-[#F0F9FF] text-xs font-bold px-3 py-2 rounded-lg border border-[#334155] transition-all">
+                    <i class="fa-solid fa-user-circle text-sm text-[#38BDF8]"></i>
+                    <span id="txt-user-name">Entrar / Conta</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+        
+        <div id="alert-pending-changes" class="hidden bg-sky-500/15 border-l-4 border-[#0284C7] p-4 rounded-xl shadow-sm flex items-center justify-between gap-4 transition-all">
+            <div class="flex items-center gap-3 text-sky-900">
+                <i class="fa-solid fa-triangle-exclamation text-xl text-[#0284C7]"></i>
+                <p class="text-xs sm:text-sm font-semibold" id="txt-pending-alert">Você fez alterações nas peças ou chapas. Clique em "Gerar Plano de Corte" para atualizar.</p>
+            </div>
+            <button onclick="triggerOptimization()" class="bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold text-xs px-4 py-2 rounded-lg shadow transition-all shrink-0 flex items-center gap-2">
+                <i class="fa-solid fa-play text-xs"></i>
+                <span id="txt-btn-quick-gen">Gerar Agora</span>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <section class="lg:col-span-4 bg-white rounded-2xl p-5 shadow-lg border border-[#BAE6FD] flex flex-col justify-between space-y-4">
+                <div>
+                    <h2 class="text-base font-bold text-[#0F172A] flex items-center gap-2 border-b border-[#E0F2FE] pb-3">
+                        <i class="fa-solid fa-layer-group text-[#2563EB]"></i>
+                        <span id="txt-sheet-title">Configurações da Chapa</span>
+                    </h2>
+
+                    <div class="space-y-4 mt-4">
+                        <div>
+                            <label class="block text-xs font-bold text-[#1E293B] mb-1" id="txt-lbl-preset">Modelo de Chapa Padrão:</label>
+                            <select id="sheet-preset" onchange="applySheetPreset(this.value)" class="w-full bg-[#F0F9FF] border border-[#BAE6FD] rounded-xl px-3 py-2 text-xs font-semibold text-[#0F172A] focus:outline-none focus:border-[#2563EB]">
+                                <option value="mdf_std">MDF Padrão (2750 x 1830 mm)</option>
+                                <option value="plywood">Compensado / Naval (2200 x 1600 mm)</option>
+                                <option value="pine">Chapa de Pinus (2000 x 1200 mm)</option>
+                                <option value="custom">Tamanho Personalizado</option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-[#1E293B] mb-1" id="txt-lbl-sheet-w">Comprimento (mm):</label>
+                                <input type="number" id="sheet-length" value="2750" oninput="markChangesPending()" class="w-full bg-[#F0F9FF] border border-[#BAE6FD] rounded-xl px-3 py-2 text-xs font-mono font-bold text-[#2563EB] focus:outline-none focus:border-[#2563EB]">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-[#1E293B] mb-1" id="txt-lbl-sheet-h">Largura (mm):</label>
+                                <input type="number" id="sheet-width" value="1830" oninput="markChangesPending()" class="w-full bg-[#F0F9FF] border border-[#BAE6FD] rounded-xl px-3 py-2 text-xs font-mono font-bold text-[#2563EB] focus:outline-none focus:border-[#2563EB]">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 pt-2">
+                            <div>
+                                <label class="block text-xs font-bold text-[#1E293B] mb-1" id="txt-lbl-kerf">Espessura Serra (Kerf):</label>
+                                <input type="number" id="saw-kerf" value="3" min="0" max="20" oninput="markChangesPending()" class="w-full bg-[#F0F9FF] border border-[#BAE6FD] rounded-xl px-3 py-2 text-xs font-mono font-bold text-[#0F172A] focus:outline-none focus:border-[#2563EB]">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-[#1E293B] mb-1" id="txt-lbl-margin">Refilo de Borda (mm):</label>
+                                <input type="number" id="sheet-margin" value="10" min="0" max="50" oninput="markChangesPending()" class="w-full bg-[#F0F9FF] border border-[#BAE6FD] rounded-xl px-3 py-2 text-xs font-mono font-bold text-[#0F172A] focus:outline-none focus:border-[#2563EB]">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="lg:col-span-8 bg-white rounded-2xl p-5 shadow-lg border border-[#BAE6FD] flex flex-col justify-between space-y-4">
+                <div>
+                    <h2 class="text-base font-bold text-[#0F172A] flex items-center gap-2 border-b border-[#E0F2FE] pb-3">
+                        <i class="fa-solid fa-list-check text-[#2563EB]"></i>
+                        <span id="txt-parts-title">Lista de Peças do Projeto</span>
+                    </h2>
+
+                    <div class="mt-4 p-3 bg-[#F0F9FF] rounded-xl border border-[#BAE6FD]">
+                        <p class="text-xs font-bold text-[#1E293B] mb-2 flex items-center gap-1.5">
+                            <i class="fa-solid fa-plus-circle text-[#2563EB]"></i> Digite as Medidas para Adicionar:
+                        </p>
+                        <div class="grid grid-cols-2 sm:grid-cols-12 gap-2">
+                            <div class="sm:col-span-4">
+                                <input type="text" id="input-new-name" placeholder="Nome (Ex: Lateral)" class="w-full bg-white border border-[#BAE6FD] rounded-lg px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:border-[#2563EB]">
+                            </div>
+                            <div class="sm:col-span-2">
+                                <input type="number" id="input-new-length" placeholder="Comp (mm)" class="w-full bg-white border border-[#BAE6FD] rounded-lg px-2 py-1.5 text-xs font-mono font-bold text-[#2563EB] focus:outline-none focus:border-[#2563EB]">
+                            </div>
+                            <div class="sm:col-span-2">
+                                <input type="number" id="input-new-width" placeholder="Larg (mm)" class="w-full bg-white border border-[#BAE6FD] rounded-lg px-2 py-1.5 text-xs font-mono font-bold text-[#2563EB] focus:outline-none focus:border-[#2563EB]">
+                            </div>
+                            <div class="sm:col-span-2">
+                                <select id="input-new-orient" class="w-full bg-white border border-[#BAE6FD] text-[#0F172A] font-semibold text-[11px] rounded-lg px-1.5 py-1.5 focus:outline-none">
+                                    <option value="auto">🔄 Livre</option>
+                                    <option value="horizontal">↔️ Horiz.</option>
+                                    <option value="vertical">↕️ Vert.</option>
+                                </select>
+                            </div>
+                            <div class="sm:col-span-2">
+                                <input type="number" id="input-new-qty" value="1" min="1" placeholder="Qtd" class="w-full bg-white border border-[#BAE6FD] rounded-lg px-2 py-1.5 text-xs font-mono font-bold text-center focus:outline-none">
+                            </div>
+                        </div>
+                        <button onclick="addNewPartFromInputs()" class="w-full mt-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold text-xs py-2 rounded-lg transition-all shadow flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-plus"></i>
+                            <span id="txt-btn-add-part">ADICIONAR MEDIDA À LISTA</span>
+                        </button>
+                    </div>
+
+                    <div class="mt-4 overflow-x-auto max-h-[260px] overflow-y-auto rounded-xl border border-[#BAE6FD]">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead class="bg-[#F0F9FF] text-[#1E293B] uppercase font-bold text-[10px] tracking-wider sticky top-0 border-b border-[#BAE6FD] z-10">
+                                <tr>
+                                    <th class="p-2.5" id="th-name">Nome da Peça</th>
+                                    <th class="p-2.5 text-center" id="th-length">Comp. (mm)</th>
+                                    <th class="p-2.5 text-center" id="th-width">Larg. (mm)</th>
+                                    <th class="p-2.5 text-center" id="th-orient">Orientação</th>
+                                    <th class="p-2.5 text-center" id="th-qty">Qtd.</th>
+                                    <th class="p-2.5 text-center" id="th-actions">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="parts-table-body" class="divide-y divide-[#E0F2FE] font-medium">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-[#E0F2FE] flex flex-wrap items-center justify-between gap-4">
+                    <button onclick="clearAllParts()" class="text-xs text-rose-600 hover:text-rose-800 font-semibold transition-all">
+                        <i class="fa-solid fa-trash-can mr-1"></i> <span id="txt-btn-clear-parts">Limpar Lista Toda</span>
+                    </button>
+
+                    <button id="btn-generate-plan" onclick="triggerOptimization()" class="w-full sm:w-auto bg-gradient-to-r from-[#0284C7] to-[#2563EB] hover:from-[#0369A1] hover:to-[#1D4ED8] text-white font-extrabold text-sm px-7 py-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-play text-white"></i>
+                        <span id="txt-btn-main-generate">GERAR PLANO DE CORTE</span>
+                    </button>
+                </div>
+            </section>
+        </div>
+
+        <section class="bg-white rounded-2xl p-5 shadow-lg border border-[#BAE6FD] space-y-6">
+            <div class="flex flex-wrap items-center justify-between gap-4 border-b border-[#E0F2FE] pb-4">
+                <div>
+                    <h2 class="text-lg font-extrabold text-[#0F172A] flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-[#2563EB]"></i>
+                        <span id="txt-diagram-title">Plano de Corte Otimizado</span>
+                    </h2>
+                    <p class="text-xs text-[#1E293B]" id="txt-diagram-sub">Fundo de painel furado, medidas nas bordas e contagem exata de cortes</p>
+                </div>
+
+                <button onclick="exportReportPDF()" class="bg-[#0F172A] hover:bg-[#1E293B] text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow flex items-center gap-2">
+                    <i class="fa-solid fa-file-pdf text-rose-400"></i>
+                    <span id="txt-btn-export-pdf">Baixar Relatório PDF</span>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <div class="bg-[#F0F9FF] p-3 rounded-xl border border-[#BAE6FD] text-center">
+                    <span class="text-[10px] uppercase font-bold text-[#1E293B] block" id="kpi-lbl-sheets">Total Chapas</span>
+                    <span id="kpi-val-sheets" class="text-xl font-black font-mono text-[#2563EB]">0</span>
+                </div>
+                <div class="bg-[#F0F9FF] p-3 rounded-xl border border-[#BAE6FD] text-center">
+                    <span class="text-[10px] uppercase font-bold text-[#1E293B] block" id="kpi-lbl-cuts">Total Cortes</span>
+                    <span id="kpi-val-cuts" class="text-xl font-black font-mono text-indigo-600">0</span>
+                </div>
+                <div class="bg-[#F0F9FF] p-3 rounded-xl border border-[#BAE6FD] text-center">
+                    <span class="text-[10px] uppercase font-bold text-[#1E293B] block" id="kpi-lbl-yield">Aproveitamento</span>
+                    <span id="kpi-val-yield" class="text-xl font-black font-mono text-emerald-600">0%</span>
+                </div>
+                <div class="bg-[#F0F9FF] p-3 rounded-xl border border-[#BAE6FD] text-center">
+                    <span class="text-[10px] uppercase font-bold text-[#1E293B] block" id="kpi-lbl-waste">Sobras / Perda</span>
+                    <span id="kpi-val-waste" class="text-xl font-black font-mono text-amber-600">0%</span>
+                </div>
+                <div class="bg-[#F0F9FF] p-3 rounded-xl border border-[#BAE6FD] text-center col-span-2 sm:col-span-1">
+                    <span class="text-[10px] uppercase font-bold text-[#1E293B] block" id="kpi-lbl-parts">Peças Alocadas</span>
+                    <span id="kpi-val-parts" class="text-xl font-black font-mono text-[#0F172A]">0 / 0</span>
+                </div>
+            </div>
+
+            <div id="pdf-report-content" class="space-y-6">
+                <div class="pegboard-bg p-6 rounded-2xl border border-slate-300 flex flex-col items-center justify-center relative min-h-[400px] overflow-hidden">
+                    <div id="canvas-container" class="w-full flex justify-center items-center overflow-auto">
+                        <canvas id="cutting-canvas" class="shadow-2xl rounded-md max-w-full border border-slate-400"></canvas>
+                    </div>
+
+                    <div class="mt-4 flex flex-wrap items-center justify-between w-full max-w-xl bg-[#0F172A] px-4 py-2.5 rounded-xl text-white text-xs shadow-lg gap-2">
+                        <button onclick="navigateSheet(-1)" class="p-1 text-[#BAE6FD] hover:text-[#38BDF8] transition-all font-bold">
+                            <i class="fa-solid fa-chevron-left mr-1"></i> Anterior
+                        </button>
+                        <div class="flex items-center gap-3">
+                            <span id="lbl-current-sheet" class="font-mono font-bold text-[#38BDF8]">Chapa 1 / 1</span>
+                            <span class="bg-[#2563EB] text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full" id="lbl-sheet-cuts-count">Cortes nesta chapa: 0</span>
+                        </div>
+                        <button onclick="navigateSheet(1)" class="p-1 text-[#BAE6FD] hover:text-[#38BDF8] transition-all font-bold">
+                            Próxima <i class="fa-solid fa-chevron-right ml-1"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="auth-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl border border-[#BAE6FD] space-y-4">
+            <div class="flex justify-between items-center border-b border-[#E0F2FE] pb-3">
+                <h3 class="text-base font-extrabold text-[#0F172A]">Acessar EasyPlan</h3>
+                <button onclick="closeAuthModal()" class="text-[#1E293B] hover:text-[#2563EB] text-lg font-bold">&times;</button>
+            </div>
+            <p class="text-xs text-[#1E293B]">Seus dados e planos de corte são salvos localmente no seu 
